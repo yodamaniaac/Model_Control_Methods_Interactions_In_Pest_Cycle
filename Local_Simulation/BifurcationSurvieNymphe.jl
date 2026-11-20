@@ -123,7 +123,7 @@ para_run_3 = (fct_hini_3,tspan)
 para_save_3 = ("Nymphal parasitoid",false,true,3)
 
 # type 
-    # Type de bifurcation 
+    # Type de bifurcation
 type = ["bifurcation_mortalite"]
 
 
@@ -140,7 +140,7 @@ para_plot_panel = "simple"
     # vecteur de float, limité minimum et maximum de l'axe Y
     # string du nom de l'axe X
     # string du nom de l'axe
-para_plot = [[0.0,100.0],"Competition intensity","Survival rate of nymphs"]
+para_plot = [[0.0,100.0],"Larval mortality rate","Average survival rate of nymphs"]
 
 
-module_analyse.plot_bifurcation_Final(rezRatio, para_bifucation, para_save_3, para_plot_panel, para_plot)
+module_analyse.plot_bifurcation_Final(rezRatio, para_bifucation, para_save_3, para_plot_panel, para_plot, "B")

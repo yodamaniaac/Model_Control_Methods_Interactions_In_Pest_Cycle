@@ -979,7 +979,7 @@ end
 #               Bool save ou non 
 #               Save Y or N
 
-function plot_bifurcation_Final(bifurcation_rez_tot, para_bifucation, para_save, para_plot_panel, para_plot)
+function plot_bifurcation_Final(bifurcation_rez_tot, para_bifucation, para_save, para_plot_panel, para_plot, panel_tag=nothing)
 
     # Extraire les paramètres de sauvgarde
     nom_modele = para_save[1]
@@ -999,7 +999,7 @@ function plot_bifurcation_Final(bifurcation_rez_tot, para_bifucation, para_save,
 
  
     if para_bifucation[6] == "log"
-        Plots.plot!(yticks = (log10.([1,10,100,1000,10000]),["1","10","100","1000","10000"]))
+        Plots.plot!(yticks = (log10.([1,10,100,1000,10000]),["0","9","99","999","9999"]))
     elseif para_bifucation[6] == "ratio"
         Plots.plot!(yticks = ([0,20,40,60,80,100],["0%","20%","40%","60%","80%","100%"])) 
         end 
@@ -1009,10 +1009,16 @@ function plot_bifurcation_Final(bifurcation_rez_tot, para_bifucation, para_save,
     end 
 
     labels = para_bifucation[5]
-    palette = ColorSchemes.colorschemes[:twelvebitrainbow]
-    positions = collect(range(0, 1; length=12))
-    indices = [2, 4, 6, 10]
-    colors = [RGB{Float64}(get(palette, positions[i])) for i in indices]
+    if length(labels) == 1
+        palette = ColorSchemes.colorschemes[:twelvebitrainbow]
+        positions = collect(range(0, 1; length=12))
+        colors = [RGB{Float64}(get(palette,positions[10]))]
+    else
+        palette = ColorSchemes.colorschemes[:twelvebitrainbow]
+        positions = collect(range(0, 1; length=12))
+        indices = [2, 4, 6, 10]
+        colors = [RGB{Float64}(get(palette, positions[i])) for i in indices]
+    end
 
 
     #for (o,morta) in enumerate(para_bifucation[1])
@@ -1061,31 +1067,9 @@ function plot_bifurcation_Final(bifurcation_rez_tot, para_bifucation, para_save,
             vect_line = exp.(vect_line)*100 
         end 
 
-        presence_para = [v[4] for v in bifurcation_rez_tot[o]] 
-        if para_bifucation[6] == "ratio"
-            presence_para = ones(length(presence_para))
-        end 
         x_line = axe_range
 
-        # Trouver l'indice de changement
-        change_idx = findfirst(presence_para .!= presence_para[1])
-        #if isa(findfirst(presence_para .!= presence_para[1]),Nothing) !=  true
-        #    change_idx = change_idx = findfirst(presence_para .!= presence_para[1])-1
-        #end
-
-        if isnothing(change_idx)
-            # Pas de changement
-            style = presence_para[1] == 0.0 ? :dashdotdot : :solid
-            plot!(x_line, vect_line, linestyle=style, linewidth=2, color=colors[o], label = false)
-        else
-            # Première partie, jusqu'au point juste avant le changement
-            plot!(x_line[1:change_idx-1], vect_line[1:change_idx-1],
-                linestyle=presence_para[1] == 0.0 ? :dashdotdot : :solid, linewidth=2, color=colors[o], label = false)
-            
-            # Deuxième partie, à partir du point de changement
-            plot!(x_line[change_idx:end], vect_line[change_idx:end],
-                linestyle=presence_para[change_idx] == 0.0 ? :dashdotdot : :solid, linewidth=2, color=colors[o], label = false)
-        end
+        plot!(x_line, vect_line, linestyle=:solid, linewidth=2, color=colors[o], label = false)
         #plot!(plt, x_line, vect_line, linewidth=2, color=colors[o], label = labels[o])
     end
 
@@ -1105,7 +1089,24 @@ function plot_bifurcation_Final(bifurcation_rez_tot, para_bifucation, para_save,
         elseif nb_modele == 3
             plot!(ylabel = "")
         end
-    end 
+    end
+
+    # Lettre de repère en haut à gauche de la figure
+    # (:bold n'est pas une couleur/police valide pour Plots.text -> GR le
+    # prend pour un nom de fichier de police et plante ; on simule le gras
+    # en superposant le même texte avec de minuscules décalages, dans la
+    # police par défaut du graphique, en noir)
+    if !isnothing(panel_tag)
+        xl = Plots.xlims(plt)
+        yl = Plots.ylims(plt)
+        x_tag = xl[1] + 0.052 * (xl[2] - xl[1])
+        y_tag = yl[2] - 0.04 * (yl[2] - yl[1])
+        dx = 0.0018 * (xl[2] - xl[1])
+        dy = 0.0018 * (yl[2] - yl[1])
+        for (ox, oy) in ((0.0, 0.0), (dx, 0.0), (-dx, 0.0), (0.0, dy), (0.0, -dy))
+            annotate!(plt, x_tag + ox, y_tag + oy, Plots.text(panel_tag, :black, 28))
+        end
+    end
 
 
     #Fixer les paras de sauvgarde

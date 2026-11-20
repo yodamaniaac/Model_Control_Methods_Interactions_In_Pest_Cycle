@@ -132,8 +132,8 @@ TABLE_DIR <- file.path(REPO_ROOT, "table")
 #
 # Returns
 #   A ggplot object representing the heatmap.
-create_plot <- function(pop_obs , stade_obs, model_name, variable_name, ligne_name, variable_legende, isDD, racine, global_min, global_max, 
-                        Xtaille, x_grille, y_grille, title_names, plot_processing="identity", plot_color="plasma") {
+create_plot <- function(pop_obs , stade_obs, model_name, variable_name, ligne_name, variable_legende, isDD, racine, global_min, global_max,
+                        Xtaille, x_grille, y_grille, title_names, plot_processing="identity", plot_color="viridis", panel_tag = NULL) {
   
   # Load the data
   file_path <- paste0(racine, model_name, pop_obs, stade_obs, isDD,'_',variable_name[2],'_', variable_name[1], '.csv')
@@ -178,25 +178,30 @@ create_plot <- function(pop_obs , stade_obs, model_name, variable_name, ligne_na
   #Creat the plot
   p <- ggplot(heatmap_melted) +
     geom_tile(aes(x = X, y = Y, fill = Density)) +
-    scale_fill_viridis_c(name = scale_title ,trans = plot_processing, option = plot_color, limits = c(global_min,global_max)) +
+    scale_fill_viridis_c(name = scale_title, trans = plot_processing, option = plot_color, limits = c(global_min,global_max),
+                         breaks = if (plot_processing == "log10") c(1, 10, 100, 1000, 10000) else waiver(),
+                         labels = if (plot_processing == "log10") c("0", "9", "99", "999", "9999") else waiver()) +
     theme_minimal() +
     scale_x_continuous(expand = c(0, 0)) +
     scale_y_continuous(expand = c(0, 0)) +
     coord_fixed(ratio = Xtaille) +
-    labs( 
+    labs(
       title = if (y_grille == 1) paste(model_name, isDD) else NULL,
       x = if (y_grille == 4) "q : fecundity rate " else NULL,
-      y = if (x_grille %% 4 == 1) axeY else NULL) +
+      y = if (x_grille %% 4 == 1) axeY else NULL,
+      tag = panel_tag) +
     theme(
       axis.title.x = element_text(size = 16),
       axis.title.y = element_text(size = 18),
       axis.text.x = element_text(size = 18),
       axis.text.y = element_text(size = 16),
       plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+      plot.tag = element_text(size = 66, face = "bold", color = "grey60", hjust = 1),
+      plot.tag.position = c(0.95, 0.90),
       legend.title = element_text(size = 14),
       legend.text = element_text(size = 12)
     )
-  
+
   return(p)
 }
 
@@ -259,7 +264,7 @@ create_plot <- function(pop_obs , stade_obs, model_name, variable_name, ligne_na
 #   A ggplot object representing a categorical heatmap of system states,
 #   including the pest survival boundary as a dashed isocline.
 # Base function for the creation HeatMap states
-create_plot_States <- function(pop_obs ,model_name, variable_name, ligne_name, variable_legende, isDD, racine, Xtaille, x_grille, y_grille, title_name) {
+create_plot_States <- function(pop_obs ,model_name, variable_name, ligne_name, variable_legende, isDD, racine, Xtaille, x_grille, y_grille, title_name, show_curves = TRUE, panel_tag = NULL) {
   
   # Find path and prepare pest larval density data
   file_path <- paste0(racine, model_name, pop_obs, isDD,'_',variable_name[2],'_', variable_name[1], '.csv')
@@ -365,7 +370,7 @@ create_plot_States <- function(pop_obs ,model_name, variable_name, ligne_name, v
   for (i in seq_len(nrow(heatmap_para_melted))) {
     
     if (!host_alive[i]) {
-      heatmap_para_melted$Density[i] <- "All dead"
+      heatmap_para_melted$Density[i] <- "Nothing survive"
       
     } else if (!parasitoid_present[i]) {
       
@@ -385,7 +390,7 @@ create_plot_States <- function(pop_obs ,model_name, variable_name, ligne_name, v
     }
   }
   
-  heatmap_para_melted$Density <- factor(heatmap_para_melted$Density, levels = c("All dead", "Stable without parasitoid", "Unstable without parasitoid", "Stable with parasitoid", "Unstable with parasitoid"))
+  heatmap_para_melted$Density <- factor(heatmap_para_melted$Density, levels = c("Nothing survive", "Stable without parasitoid", "Unstable without parasitoid", "Stable with parasitoid", "Unstable with parasitoid"))
   
   
   ## Create the plot 
@@ -396,7 +401,7 @@ create_plot_States <- function(pop_obs ,model_name, variable_name, ligne_name, v
       
       # Choose the color
       values = c(
-        "All dead"= "#E3F2FD",
+        "Nothing survive"= "#E3F2FD",
         "Stable without parasitoid" =  "#B5C861FF",
         "Unstable without parasitoid" = "#8AA789FF",
         "Stable with parasitoid" =  "#CB8573FF",
@@ -407,10 +412,11 @@ create_plot_States <- function(pop_obs ,model_name, variable_name, ligne_name, v
     scale_x_continuous(expand = c(0, 0)) +
     scale_y_continuous(expand = c(0, 0)) +
     coord_fixed(ratio = Xtaille) +
-    labs( 
+    labs(
       title = if (y_grille == 1) paste(title_name) else NULL,
       x = if (y_grille == 4) "fecondity rate" else NULL,
-      y = if (x_grille %% 4 == 1) axeY else NULL
+      y = if (x_grille %% 4 == 1) axeY else NULL,
+      tag = panel_tag
     ) +
     theme(
       axis.title.x = element_text(size = 16),
@@ -418,17 +424,21 @@ create_plot_States <- function(pop_obs ,model_name, variable_name, ligne_name, v
       axis.text.x = element_text(size = 18),
       axis.text.y = element_text(size = 16),
       plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+      plot.tag = element_text(size = 66, face = "bold", color = "grey60", hjust = 1),
+      plot.tag.position = c(0.95, 0.90),
       legend.title = element_text(size = 14),
       legend.text = element_text(size = 12)
     )
   # Add the area on pest survival
-  if (variable_name[1]!="deltaA") {
-    p = p + geom_line(data = isocline_existance, aes(x = X, y = Y), 
-                      color = "steelblue", linewidth = 1)
-  }
-  if (model_name=="sansPara"){
-    p = p + geom_path( data = isocline_stability, aes(x = q, y = d), color = "firebrick"
-    )
+  if (show_curves) {
+    if (variable_name[1]!="deltaA") {
+      p = p + geom_line(data = isocline_existance, aes(x = X, y = Y),
+                        color = "steelblue", linewidth = 1)
+    }
+    if (model_name=="sansPara"){
+      p = p + geom_path( data = isocline_stability, aes(x = q, y = d), color = "firebrick"
+      )
+    }
   }
   return(p)
 }
@@ -488,7 +498,7 @@ create_plot_States <- function(pop_obs ,model_name, variable_name, ligne_name, v
 # Returns
 #   A ggplot object representing a continuous heatmap of relative effects.
 # Base function for the creation HeatMap states
-create_plot_Relatif <- function(pop_obs ,model_name, variable_name, ligne_name, variable_legende, isDD, racine, global_min, global_max, Xtaille, x_grille, y_grille, title_names) {
+create_plot_Relatif <- function(pop_obs ,model_name, variable_name, ligne_name, variable_legende, isDD, racine, global_min, global_max, Xtaille, x_grille, y_grille, title_names, panel_tag = NULL) {
   
   # Alternative Para
   file_path <- paste0(racine, model_name, pop_obs, isDD,'_',variable_name[2],'_', variable_name[1], '.csv')
@@ -544,16 +554,19 @@ create_plot_Relatif <- function(pop_obs ,model_name, variable_name, ligne_name, 
     scale_x_continuous(expand = c(0, 0)) +
     scale_y_continuous(expand = c(0, 0)) +
     coord_fixed(ratio = Xtaille) +
-    labs( 
+    labs(
       title = if (y_grille == 1) paste(model_name, isDD) else NULL,
       x = if (y_grille == 4) "q : taux de reproduction" else NULL,
-      y = if (x_grille %% 4 == 1) axeY else NULL) +
+      y = if (x_grille %% 4 == 1) axeY else NULL,
+      tag = panel_tag) +
     theme(
       axis.title.x = element_text(size = 16),
       axis.title.y = element_text(size = 18),
       axis.text.x = element_text(size = 18),
       axis.text.y = element_text(size = 16),
       plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+      plot.tag = element_text(size = 66, face = "bold", color = "grey60", hjust = 1),
+      plot.tag.position = c(0.95, 0.90),
       legend.title = element_text(size = 14),
       legend.text = element_text(size = 12)
     )
@@ -694,8 +707,8 @@ find_global_min_max <- function(pop_obs, stade_obs, racine, model_names, variabl
 #   A patchwork / ggplot object corresponding to the full comparison
 #   table, invisibly printed and saved to disk.
 create_comparison_tables <- function(Empfile, stade_dev_obs = "", type = "Density",variable_names = c("deltaU","deltaL","deltaM","deltaA"),variable2_names="q",ligne_names = c("DeltaA1","DeltaU1","DeltaL2","DeltaM2"),
-                                     variable_legende = c("egg", "larva", "pupa", "adult"), title_names = c("Without parasitoid","Egg parasitoid","Larva parasitoid","Pupa parasitoid"), 
-                                     model_names = c("sansPara", "ParaOeufs", "ParaLarve", "ParaNymphe")) {
+                                     variable_legende = c("egg", "larva", "pupa", "adult"), title_names = c("Without parasitoid","Egg parasitoid","Larva parasitoid","Pupa parasitoid"),
+                                     model_names = c("sansPara", "ParaOeufs", "ParaLarve", "ParaNymphe"), show_curves = TRUE) {
 
   
   # Root directories, relative to the repository (Supplementary_material/)
@@ -726,17 +739,17 @@ create_comparison_tables <- function(Empfile, stade_dev_obs = "", type = "Densit
     o = o+1
     model_name = model_names[1]
     if (type == "Density" && variable2_names == "q"){
-      
-      Plot[[paste0(model_name, "_", variable_name)]] <- create_plot(pop_obs, stade_dev_obs, model_name, c(variable_name,variable2_names), ligne_name, variable_legende[i], 
-                                                                        "DD", racine, global_min_max_DD$min, global_min_max_DD$max, 70, o, i, title_names[count_col],"log10")
-      
+
+      Plot[[paste0(model_name, "_", variable_name)]] <- create_plot(pop_obs, stade_dev_obs, model_name, c(variable_name,variable2_names), ligne_name, variable_legende[i],
+                                                                        "DD", racine, global_min_max_DD$min, global_min_max_DD$max, 70, o, i, title_names[count_col],"log10", panel_tag = LETTERS[o])
+
     } else if (type == "Type" && variable2_names == "q") {
       Plot[[paste0(model_name, "_", variable_name)]] <- create_plot_States(pop_obs, model_name, c(variable_name,variable2_names), ligne_name, variable_legende[i],
-                                                                               "DD", racine, 70, o, i, title_names[count_col])
-    
+                                                                               "DD", racine, 70, o, i, title_names[count_col], show_curves, panel_tag = LETTERS[o])
+
     } else if (type == "CV" && variable2_names == "q") {
-      Plot[[paste0(model_name, "_", variable_name)]] <- create_plot(pop_obs, stade_dev_obs, model_name, c(variable_name,variable2_names), ligne_name, variable_legende[i], 
-                                                                           "DD", racine, global_min_max_DD$min, global_min_max_DD$max, 70, o, i, title_names[count_col],"identity","cividis")
+      Plot[[paste0(model_name, "_", variable_name)]] <- create_plot(pop_obs, stade_dev_obs, model_name, c(variable_name,variable2_names), ligne_name, variable_legende[i],
+                                                                           "DD", racine, global_min_max_DD$min, global_min_max_DD$max, 70, o, i, title_names[count_col],"identity","cividis", panel_tag = LETTERS[o])
     }
     
     for (model_name in model_names[2:length(model_names)]) {
@@ -745,17 +758,17 @@ create_comparison_tables <- function(Empfile, stade_dev_obs = "", type = "Densit
       
       if (type == "Density"){
         # Generate plots for DD
-        Plot[[paste0(model_name, "_", variable_name)]] <- create_plot(pop_obs, stade_dev_obs, model_name, c(variable_name,variable2_names), ligne_name, variable_legende[i], 
-                                                                          "DD", racine, global_min_max_DD$min, global_min_max_DD$max, 70, o, i, title_names[count_col],"log10")
+        Plot[[paste0(model_name, "_", variable_name)]] <- create_plot(pop_obs, stade_dev_obs, model_name, c(variable_name,variable2_names), ligne_name, variable_legende[i],
+                                                                          "DD", racine, global_min_max_DD$min, global_min_max_DD$max, 70, o, i, title_names[count_col],"log10", panel_tag = LETTERS[o])
       } else if (type == "Type") {
         Plot[[paste0(model_name, "_", variable_name)]] <- create_plot_States(pop_obs, model_name, c(variable_name,variable2_names), ligne_name, variable_legende[i],
-                                                                                 "DD", racine, 70, o, i, title_names[count_col])
+                                                                                 "DD", racine, 70, o, i, title_names[count_col], show_curves, panel_tag = LETTERS[o])
       } else if (type == "CV"&& variable2_names == "q") {
-        Plot[[paste0(model_name, "_", variable_name)]] <- create_plot(pop_obs, stade_dev_obs, model_name, c(variable_name,variable2_names), ligne_name, variable_legende[i], 
-                                                                         "DD", racine, global_min_max_DD$min, global_min_max_DD$max, 70, o, i, title_names[count_col],"identity","cividis")
+        Plot[[paste0(model_name, "_", variable_name)]] <- create_plot(pop_obs, stade_dev_obs, model_name, c(variable_name,variable2_names), ligne_name, variable_legende[i],
+                                                                         "DD", racine, global_min_max_DD$min, global_min_max_DD$max, 70, o, i, title_names[count_col],"identity","cividis", panel_tag = LETTERS[o])
       }else if (type == "Relatif") {
-        Plot[[paste0(model_name, "_", variable_name)]] <- create_plot_Relatif(pop_obs, stade_dev_obs, model_name, c(variable_name,variable2_names), ligne_name, variable_legende[i], 
-                                                                                  "DD", racine, global_min_max_DD$min, global_min_max_DD$max, 70, o, i, title_names[count_col])
+        Plot[[paste0(model_name, "_", variable_name)]] <- create_plot_Relatif(pop_obs, stade_dev_obs, model_name, c(variable_name,variable2_names), ligne_name, variable_legende[i],
+                                                                                  "DD", racine, global_min_max_DD$min, global_min_max_DD$max, 70, o, i, title_names[count_col], panel_tag = LETTERS[o])
       }
     }
   }
@@ -769,7 +782,8 @@ create_comparison_tables <- function(Empfile, stade_dev_obs = "", type = "Densit
       legend.position = "right",
       legend.text = element_text(size = 25),
       legend.title = element_text(size = 30, face = "bold"),
-      legend.key.size = unit(1.2, "cm"),
+      legend.key.width = unit(3.0, "cm"),   # largeur de la color barre
+      legend.key.height = unit(2.0, "cm"),  # hauteur de la color barre
       legend.spacing.y = unit(0.5, "cm"),
       panel.background  = element_rect(fill = hcl(39, 100, 95), colour = NA),
       plot.background   = element_rect(fill = hcl(39, 100, 95), colour = NA),
@@ -780,20 +794,11 @@ create_comparison_tables <- function(Empfile, stade_dev_obs = "", type = "Densit
   legend_gg <- cowplot::ggdraw(legend)
   
   
-  # Création d'un objet de même dimension que la légende mais vide
-  empty_legend <- Plot[[10]] + 
-    theme(
-      legend.position = "right",
-      legend.text = element_text(size = 14, color =  "white"),
-      legend.title = element_text(size = 16, face = "bold", color =  "white"),
-      legend.key = element_rect(fill =  "white", colour =  "white"),  # fond des carrés de légende
-      legend.background = element_rect(fill =  "white", colour =  "white"),  # fond du bloc de légende
-      legend.box.background = element_rect(fill =  "white", colour =  "white"),  # bordure autour de toute la légende
-      legend.key.size = unit(0, "cm"),
-      legend.spacing.y = unit(0, "cm")
-    )
-  empty_legend <- cowplot::get_legend(empty_legend )
-  empty_legend_gg <- cowplot::ggdraw(empty_legend)
+  # Emplacement de même largeur que la légende, mais totalement vide
+  # (on ne tente plus de "blanchir" une vraie colorbar continue : le raster
+  # du gradient et ses graduations restaient visibles en résidus/points
+  # fantômes, un simple spacer réserve la place sans rien dessiner).
+  empty_legend_gg <- plot_spacer()
   
   # Nettoyer tous les plots
   Plot_clean <- lapply(Plot, function(p) {
@@ -808,8 +813,8 @@ create_comparison_tables <- function(Empfile, stade_dev_obs = "", type = "Densit
   
   
   # Créer titres colonnes et lignes
-  col_titles <- c("Without parasitoid", "Egg parasitoid", "Larva parasitoid", "Pupa parasitoid")
-  row_labels <- c("Egg mortality rate", "Larva mortality rate", "Pupa mortality rate", "Adult mortality rate")
+  col_titles <- c("Without parasitoid", "Eggs parasitoid", " Larval parasitoid", "      Nymphal parasitoid")
+  row_labels <- c("Eggs mortality rate", "Larval mortality rate", "Nymphal mortality rate", "Adult mortality rate")
   
   # Créer chaque rangée de graphiques avec titre de ligne
   plot_rows <- list()
@@ -817,7 +822,7 @@ create_comparison_tables <- function(Empfile, stade_dev_obs = "", type = "Densit
     label_grob <- ggplot() +
       theme_void() +
       annotation_custom(
-        grob = textGrob(row_labels[i + 1], rot = 90, gp = gpar(fontsize = 30)),
+        grob = textGrob(row_labels[i + 1], rot = 90, gp = gpar(fontsize = 36)),
         xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf
       )
     row_plots <- Plot_clean[(1 + i*4):(4 + i*4)]
@@ -833,7 +838,7 @@ create_comparison_tables <- function(Empfile, stade_dev_obs = "", type = "Densit
   col_title_plots <- lapply(col_titles, function(title) {
     ggplot() +
       theme_void() +
-      annotation_custom(textGrob(title, gp = gpar(fontsize = 30, fontface = "bold")))
+      annotation_custom(textGrob(title, gp = gpar(fontsize = 36, fontface = "bold")))
   })
   empty_plot <- ggplot() + theme_void()
   empty_legend_spot <- ggplot() + theme_void()  # case vide pour la légende
@@ -844,7 +849,7 @@ create_comparison_tables <- function(Empfile, stade_dev_obs = "", type = "Densit
   bottom_axis <- ggplot() +
     theme_void() +
     annotation_custom(
-      grob = textGrob("Fecondity rate", gp = gpar(fontsize = 30))
+      grob = textGrob("Fecundity rate", gp = gpar(fontsize = 50))
     )
   
   # Fusion finale
@@ -857,18 +862,19 @@ create_comparison_tables <- function(Empfile, stade_dev_obs = "", type = "Densit
     bottom_axis
   
   final_plot <- final_plot +
-    plot_layout(heights = c(0.1, 0.01, rep(1, 4), 0.1))
+    plot_layout(heights = c(0.1, 0.01, rep(1, 4), 0.21))
   
   # Affichage
   print(final_plot)
   
   # Sauvegarde
   
-  plot_file_path_DD_svg <- paste0(racineSave, stade_dev_obs, pop_obs, "_", type, "_", "comparison_table_DD.svg")
-  plot_file_path_DD_png <- paste0(racineSave, stade_dev_obs, pop_obs, "_", type, "_", "comparison_table_DD.png")
+  curves_suffix <- if (show_curves) "" else "_NoCurves"
+  plot_file_path_DD_svg <- paste0(racineSave, stade_dev_obs, pop_obs, "_", type, curves_suffix, "_", "comparison_table_DD.svg")
+  plot_file_path_DD_png <- paste0(racineSave, stade_dev_obs, pop_obs, "_", type, curves_suffix, "_", "comparison_table_DD.png")
   
-  ggsave(plot_file_path_DD_svg, device = "svg", plot = final_plot, width = 25, height = 23, dpi = 300,   bg ="#FFF6E5")
-  ggsave(plot_file_path_DD_png, device = "png", plot = final_plot, width = 25, height = 23, dpi = 300,   bg ="#FFF6E5")
+  ggsave(plot_file_path_DD_svg, device = "svg", plot = final_plot, width = 29, height = 24, dpi = 300,   bg ="#FFF6E5")
+  ggsave(plot_file_path_DD_png, device = "png", plot = final_plot, width = 29, height = 24, dpi = 300,   bg ="#FFF6E5")
   
   cat("Comparison tables saved as", plot_file_path_DD_png, "and", plot_file_path_DD_svg, "\n")
   
@@ -895,6 +901,9 @@ create_comparison_tables("HeatMapDD_paradev_16_final", "Para_")
 
 ### HeatMap Type Final, equilibrium type version
 create_comparison_tables("HeatMapDD_paradev_16_final", type = "Type")
+
+### HeatMap Type Final, equilibrium type version, without the overlaid curves
+create_comparison_tables("HeatMapDD_paradev_16_final", type = "Type", show_curves = FALSE)
 
 ### HeatMap CV Final, equilibrium type version
 create_comparison_tables("HeatMapDD_paradev_16_final", type = "CV")

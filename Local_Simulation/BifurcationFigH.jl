@@ -1,4 +1,5 @@
 ########################################
+
 #### Diagramme de bifurcation Final ####
 ########################################
 
@@ -141,6 +142,6 @@ para_save_3, max, type, popObs);
 rezFigH = [dataLarve[1],dataNymphe[1],dataAdultePara[1]]
 
 para_plot_panel = "simple"
-para_plot = [[0.0,log10(10000)],"Larvae mortality rate","Population density"]
+para_plot = [[0.0,log10(10000)],"Larval mortality rate","Population density"]
 para_bifucation = (["deltaL"],(0.00001,0.4),100,1000, (["Larval Density","Nymphal Density","Adulte Parasitoid Density"]),"log")
-a = module_analyse.plot_bifurcation_Final(rezFigH, para_bifucation, para_save_3, para_plot_panel, para_plot)
+a = module_analyse.plot_bifurcation_Final(rezFigH, para_bifucation, para_save_3, para_plot_panel, para_plot, "A")
